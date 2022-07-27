@@ -1,7 +1,7 @@
 import { compare } from 'bcryptjs';
-import { sign } from 'jsonwebtoken';
 import { prismaClient } from "../../prisma/prismaClient";
 import { GenerateRefreshToken } from '../../provider/generateRefreshToken';
+import { GenerateTokenProvider } from '../../provider/generateTokenProvider';
 
 interface IRequest {
   username: string;
@@ -22,9 +22,13 @@ class AuthenticateUserUseCase {
     
     if (!passwordMatch) throw new Error("User or password incorrent!");
 
-    const token = sign({}, process.env.TOKEN_SECRET, {
-      subject: userExists.id,
-      expiresIn: "20s"
+    const generateTokenProvider = new GenerateTokenProvider();
+    const token = await generateTokenProvider.execute(userExists.id);
+
+    await prismaClient.refreshToken.deleteMany({
+      where: {
+        userId: userExists.id
+      }
     });
 
     const generateRefreshToken = new GenerateRefreshToken();
